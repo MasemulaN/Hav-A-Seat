@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}
+Events | Hav-A-Seat
+{% endblock %}
+
+{% block content %}
+
+<h1 class="mb-4">Upcoming Events</h1>
+
+{% for event in events %}
+
+<div class="card mb-3">
+    <div class="card-body">
+
+        <h4>{{ event.title }}</h4>
+
+        <p>📍 {{ event.location }}</p>
+
+        <p>📅 {{ event.date }}</p>
+
+        <a href="{{ url_for('main.reserve') }}" class="btn btn-success">
+            Reserve Seat
+        </a>
+
+    </div>
+</div>
+
+{% endfor %}
+
+{% endblock %}

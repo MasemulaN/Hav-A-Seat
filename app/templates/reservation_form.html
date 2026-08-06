@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}
+Reserve a Seat | Hav-A-Seat
+{% endblock %}
+
+{% block content %}
+
+<h1 class="mb-4">Reserve Your Seat</h1>
+
+<form method="POST">
+
+    <div class="mb-3">
+        <label class="form-label">Full Name</label>
+        <input
+            type="text"
+            name="full_name"
+            class="form-control"
+            required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Email Address</label>
+        <input
+            type="email"
+            name="email"
+            class="form-control"
+            required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Number of Tickets</label>
+        <input
+            type="number"
+            name="tickets"
+            min="1"
+            class="form-control"
+            required>
+    </div>
+
+    <button class="btn btn-primary">
+        Submit Reservation
+    </button>
+
+</form>
+
+{% endblock %}
