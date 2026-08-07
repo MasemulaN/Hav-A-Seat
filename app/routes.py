@@ -59,16 +59,11 @@ def reserve():
         email = request.form["email"]
         tickets = request.form["tickets"]
 
-        return f"""
-        <h2>Reservation Received!</h2>
-
-        <p>Thank you, {full_name}.</p>
-
-        <p>Email: {email}</p>
-
-        <p>Tickets: {tickets}</p>
-
-        <a href="/events">Back to Events</a>
-        """
+        return render_template(
+            "confirmation.html",
+            full_name=full_name,
+            email=email,
+            tickets=tickets
+        )
 
     return render_template("reservation_form.html")
