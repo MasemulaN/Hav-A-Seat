@@ -6,46 +6,74 @@ Reserve a Seat | Hav-A-Seat
 
 {% block content %}
 
-<div class="container mt-5">
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
 
-    <h1 class="mb-4">Reserve a Seat</h1>
+            <h2 class="mb-4">Reserve Your Seats</h2>
 
-    <form method="POST" action="{{ url_for('main.reserve') }}">
+            <form method="POST">
 
-        <div class="mb-3">
-            <label class="form-label">Full Name</label>
-            <input
-                type="text"
-                name="full_name"
-                class="form-control"
-                required>
+                <input type="hidden" name="session_id" value="{{ session_id }}">
+
+                <div class="mb-3">
+                    <label for="full_name" class="form-label">
+                        Full Name
+                    </label>
+
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="full_name"
+                        name="full_name"
+                        required
+                    >
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">
+                        Email Address
+                    </label>
+
+                    <input
+                        type="email"
+                        class="form-control"
+                        id="email"
+                        name="email"
+                        required
+                    >
+                </div>
+
+                <div class="mb-3">
+                    <label for="tickets" class="form-label">
+                        Number of Tickets
+                    </label>
+
+                    <input
+                        type="number"
+                        class="form-control"
+                        id="tickets"
+                        name="tickets"
+                        min="1"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-success">
+                    Reserve Seats
+                </button>
+
+                <a
+                    href="{{ url_for('main.events') }}"
+                    class="btn btn-secondary"
+                >
+                    Back to Events
+                </a>
+
+            </form>
+
         </div>
-
-        <div class="mb-3">
-            <label class="form-label">Email Address</label>
-            <input
-                type="email"
-                name="email"
-                class="form-control"
-                required>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Number of Tickets</label>
-            <input
-                type="number"
-                name="tickets"
-                min="1"
-                class="form-control"
-                required>
-        </div>
-
-        <button type="submit" class="btn btn-primary">
-            Submit Reservation
-        </button>
-
-    </form>
-
+    </div>
 </div>
 
 {% endblock %}

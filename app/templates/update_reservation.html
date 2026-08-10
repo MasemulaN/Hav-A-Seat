@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}
+Update Reservation | Hav-A-Seat
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+
+            <h2 class="mb-4">Update Reservation</h2>
+
+            <div class="card mb-4">
+                <div class="card-body">
+
+                    <h5>{{ reservation.title }}</h5>
+
+                    <p>
+                        <i class="bi bi-person"></i>
+                        {{ reservation.full_name }}
+                    </p>
+
+                    <p>
+                        <i class="bi bi-envelope"></i>
+                        {{ reservation.email }}
+                    </p>
+
+                    <p>
+                        Current tickets:
+                        {{ reservation.tickets }}
+                    </p>
+
+                </div>
+            </div>
+
+            <form method="POST">
+
+                <div class="mb-3">
+                    <label for="tickets" class="form-label">
+                        Number of Tickets
+                    </label>
+
+                    <input
+                        type="number"
+                        class="form-control"
+                        id="tickets"
+                        name="tickets"
+                        min="{{ reservation.tickets }}"
+                        value="{{ reservation.tickets }}"
+                        required
+                    >
+
+                    <div class="form-text">
+                        You can add tickets but cannot reduce your current
+                        ticket quantity.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="session_id" class="form-label">
+                        Session
+                    </label>
+
+                    <select
+                        class="form-select"
+                        id="session_id"
+                        name="session_id"
+                        required
+                    >
+
+                        {% for session in sessions %}
+
+                        <option
+                            value="{{ session.session_id }}"
+                            {% if session.session_id == reservation.session_id %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ session.session_date }}
+                            |
+                            {{ session.start_time }}
+                            -
+                            {{ session.end_time }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-success">
+                    Update Reservation
+                </button>
+
+                <a
+                    href="{{ url_for('main.reservations') }}"
+                    class="btn btn-secondary"
+                >
+                    Back to Reservations
+                </a>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

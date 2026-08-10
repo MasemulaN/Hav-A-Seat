@@ -6,22 +6,81 @@ Events | Hav-A-Seat
 
 {% block content %}
 
-<h1 class="mb-4">Upcoming Events</h1>
+<h2 class="mb-4">Upcoming Events</h2>
 
 {% for event in events %}
 
-<div class="card mb-3">
+<div class="card mb-4">
     <div class="card-body">
 
         <h4>{{ event.title }}</h4>
 
-        <p>📍 {{ event.location }}</p>
+        <p>
+            <i class="bi bi-geo-alt"></i>
+            {{ event.location }}
+        </p>
 
-        <p>📅 {{ event.date }}</p>
+        <p>
+            <i class="bi bi-calendar-event"></i>
+            {{ event.start_date }} - {{ event.end_date }}
+        </p>
 
-        <a href="{{ url_for('main.reserve') }}" class="btn btn-success">
-            Reserve Seat
-        </a>
+        <p>
+            <i class="bi bi-tag"></i>
+            {{ event.category }}
+        </p>
+
+        <p>{{ event.description }}</p>
+
+        {% if event.sessions %}
+
+        <form method="GET" action="{{ url_for('main.reserve') }}">
+
+            <label for="session-{{ event.event_id }}" class="form-label">
+                Select a session
+            </label>
+
+            <select
+                id="session-{{ event.event_id }}"
+                name="session_id"
+                class="form-select mb-3"
+                required
+            >
+
+                {% for session in event.sessions %}
+
+                <option
+                    value="{{ session.session_id }}"
+                    {% if session.available_seats <= 0 %}
+                        disabled
+                    {% endif %}
+                >
+                    {{ session.session_date }}
+                    |
+                    {{ session.start_time }}
+                    -
+                    {{ session.end_time }}
+                    |
+                    {{ session.available_seats }} seats available
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+            <button type="submit" class="btn btn-success">
+                Reserve Seat
+            </button>
+
+        </form>
+
+        {% else %}
+
+        <p class="text-muted">
+            No sessions available.
+        </p>
+
+        {% endif %}
 
     </div>
 </div>

@@ -1,15 +1,123 @@
 {% extends "base.html" %}
 
 {% block title %}
-Reservations | Hav-A-Seat
+My Reservations | Hav-A-Seat
 {% endblock %}
 
 {% block content %}
 
-<h1>My Reservations</h1>
+<h2 class="mb-4">Find Your Reservations</h2>
 
-<p class="text-muted">
-No reservations yet.
-</p>
+<form method="POST" class="mb-4">
+
+    <div class="mb-3">
+        <label for="email" class="form-label">
+            Email Address
+        </label>
+
+        <input
+            type="email"
+            class="form-control"
+            id="email"
+            name="email"
+            required
+        >
+    </div>
+
+    <button type="submit" class="btn btn-success">
+        Find Reservations
+    </button>
+
+</form>
+
+{% if reservations %}
+
+    <h4 class="mb-3">Your Reservations</h4>
+
+    {% for reservation in reservations %}
+
+    <div class="card mb-3">
+        <div class="card-body">
+
+            <h5>{{ reservation.title }}</h5>
+
+            <p>
+                <i class="bi bi-calendar"></i>
+                {{ reservation.session_date }}
+            </p>
+
+            <p>
+                <i class="bi bi-clock"></i>
+                {{ reservation.start_time }}
+                -
+                {{ reservation.end_time }}
+            </p>
+
+            <p>
+                <i class="bi bi-ticket-perforated"></i>
+                {{ reservation.tickets }} ticket(s)
+            </p>
+
+            <p>
+                <i class="bi bi-person"></i>
+                {{ reservation.full_name }}
+            </p>
+
+            <p>
+                Reservation ID:
+                {{ reservation.reservation_id }}
+            </p>
+
+            {% if reservation.status %}
+
+                <p class="text-danger">
+                    <i class="bi bi-x-circle"></i>
+                    Cancelled
+                </p>
+
+            {% else %}
+
+                <p class="text-success">
+                    <i class="bi bi-check-circle"></i>
+                    Active
+                </p>
+
+                <a
+                    href="{{ url_for(
+                        'main.update_reservation',
+                        reservation_id=reservation.reservation_id
+                    ) }}"
+                    class="btn btn-primary"
+                >
+                    Update Reservation
+                </a>
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'main.cancel_reservation',
+                        reservation_id=reservation.reservation_id
+                    ) }}"
+                    class="d-inline"
+                >
+                    <button type="submit" class="btn btn-danger">
+                        Cancel Reservation
+                    </button>
+                </form>
+
+            {% endif %}
+
+        </div>
+    </div>
+
+    {% endfor %}
+
+{% elif request.method == "POST" %}
+
+    <p class="text-muted">
+        No reservations were found for this email address.
+    </p>
+
+{% endif %}
 
 {% endblock %}
