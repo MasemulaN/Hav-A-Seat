@@ -67,7 +67,7 @@ The Week 1 application uses a three-container Docker architecture:
 
 ---
 
-🔄 Request Flow
+##🔄 Request Flow
 A user accesses the application through http://localhost.
 Nginx receives the request on port 80.
 Nginx forwards the request to the Flask application.
@@ -77,7 +77,7 @@ Flask returns the response through Nginx to the user's browser.
 
 ---
 
-🗄️ Database
+##🗄️ Database
 
 The application uses PostgreSQL with three main tables.
 
@@ -122,7 +122,7 @@ Available seats are calculated based on the session capacity and the number of a
 
 ---
 
-🚀 Running the Application Locally
+## 🚀 Running the Application Locally
 📋 Prerequisites
 
 Install:
@@ -134,13 +134,13 @@ Python is required for development outside Docker.
 
 ---
 
-📥 Clone the Repository
+##📥 Clone the Repository
 git clone https://github.com/MasemulaN/Hav-A-Seat.git
 cd Hav-A-Seat
 
 ---
 
-🔐 Environment Variables
+##🔐 Environment Variables
 
 The application uses environment variables for database configuration.
 
