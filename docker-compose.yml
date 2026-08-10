@@ -1,0 +1,44 @@
+services:
+
+  db:
+    image: postgres:18
+    container_name: hav-a-seat-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hav_a_seat
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  web:
+    build: .
+    container_name: hav-a-seat-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+
+  nginx:
+    image: nginx:alpine
+    container_name: hav-a-seat-nginx
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  postgres_data:
+    name: hav-a-seat_postgres_data
+
+networks:
+  default:
+    name: hav-a-seat_default

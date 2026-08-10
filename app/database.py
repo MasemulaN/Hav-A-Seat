@@ -1,19 +1,17 @@
 import os
+from dotenv import load_dotenv
 import psycopg
 from psycopg.rows import dict_row
-from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def get_db_connection():
-    connection = psycopg.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
+    return psycopg.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", "5432"),
         dbname=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
         row_factory=dict_row
     )
-
-    return connection
-

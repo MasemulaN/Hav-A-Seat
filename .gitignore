@@ -3,4 +3,4 @@ __pycache__/
 *.pyc
 .env
 .vscode/
-.env
+hav_a_seat_backup.dump
