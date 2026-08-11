@@ -129,6 +129,217 @@ Python is also required when running the application directly outside Docker.
 
 ## 📥 Clone the Repository
 
-```bash
-git clone https://github.com/MasemulaN/Hav-A-Seat.git
-cd Hav-A-Seat
+Clone the repository using:
+
+`git clone https://github.com/MasemulaN/Hav-A-Seat.git`
+
+Then navigate into the project:
+
+`cd Hav-A-Seat`
+
+---
+
+## 🔐 Environment Variables
+
+The application uses environment variables for database configuration.
+
+Example configuration:
+
+`DB_HOST=localhost`
+
+`DB_PORT=5432`
+
+`DB_NAME=hav_a_seat`
+
+`DB_USER=postgres`
+
+`DB_PASSWORD=your_password`
+
+The actual `.env` file is excluded from the GitHub repository using `.gitignore`.
+
+When the application runs inside Docker Compose, the Flask container communicates with PostgreSQL using the Docker service name `db`.
+
+The Docker database configuration uses:
+
+`DB_HOST=db`
+
+`DB_PORT=5432`
+
+---
+
+## 🐳 Running with Docker Compose
+
+Build and start the application using:
+
+`docker compose up -d --build`
+
+Check the running containers using:
+
+`docker compose ps`
+
+The Docker Compose stack contains three services:
+
+- `hav-a-seat-nginx`
+- `hav-a-seat-web`
+- `hav-a-seat-db`
+
+---
+
+## 🌐 Accessing the Application
+
+The recommended way to access the application is through Nginx:
+
+`http://localhost`
+
+The Flask application is also exposed on:
+
+`http://localhost:5000`
+
+The Flask port is available for development and troubleshooting purposes, while Nginx provides the main entry point to the application.
+
+---
+
+## 🧰 Useful Docker Commands
+
+### ▶️ Start the application
+
+`docker compose up -d`
+
+### 🔨 Rebuild the application
+
+`docker compose up -d --build`
+
+### 🛑 Stop the application
+
+`docker compose down`
+
+### 📊 Check container status
+
+`docker compose ps`
+
+### 📝 View Flask logs
+
+`docker logs hav-a-seat-web`
+
+### 🌐 View Nginx logs
+
+`docker logs hav-a-seat-nginx`
+
+### 🗄️ View PostgreSQL logs
+
+`docker logs hav-a-seat-db`
+
+---
+
+## 📁 Project Structure
+
+The main project structure is:
+
+- `app/` — Flask application code
+- `app/static/` — Static files
+- `app/templates/` — HTML/Jinja2 templates
+- `app/database.py` — Database connection and database-related functionality
+- `app/routes.py` — Application routes
+- `nginx/` — Nginx configuration
+- `nginx/nginx.conf` — Nginx reverse-proxy configuration
+- `screenshots/` — Project screenshots
+- `app.py` — Application entry point
+- `Dockerfile` — Flask application Docker image configuration
+- `docker-compose.yml` — Docker services configuration
+- `requirements.txt` — Python dependencies
+- `.gitignore` — Files excluded from version control
+- `README.md` — Project documentation
+
+---
+
+## 🔮 Future Development
+
+The project will continue to be developed during the following project phases.
+
+Planned areas include:
+
+- AWS infrastructure using Terraform
+- VPC networking
+- Public and private subnets
+- Internet Gateway
+- NAT Gateway
+- Amazon RDS PostgreSQL
+- Application Load Balancer
+- EC2 deployment
+- Auto Scaling
+- Docker deployment on AWS
+- GitHub Actions CI/CD
+- CloudWatch monitoring
+- AWS security configuration
+- Cost optimization
+
+---
+
+## 👤 Author
+
+**Noluthando Masemula**
+
+Cloud Engineering / Software Development
+
+GitHub: https://github.com/MasemulaN
+
+---
+
+# 🏗️ Application Architecture
+
+The Week 1 application runs using three Docker containers:
+
+**Browser → Nginx → Flask → PostgreSQL**
+
+### 🔄 Architecture Components
+
+**1. Browser**
+
+The user accesses the application through `http://localhost`.
+
+**2. Nginx**
+
+Nginx listens on port `80` and acts as the reverse proxy and main entry point for the application.
+
+**3. Flask**
+
+The Flask application runs on port `5000`. It handles application logic, routes, reservations, event information, and communication with the database.
+
+**4. PostgreSQL**
+
+PostgreSQL runs inside the `hav-a-seat-db` Docker container on port `5432` and provides persistent data storage.
+
+---
+
+## 🔄 Request Flow
+
+1. The user accesses `http://localhost`.
+2. Nginx receives the request on port `80`.
+3. Nginx acts as a reverse proxy and forwards the request to the Flask application using the Docker service name `web` and port `5000`.
+4. Flask processes the request and determines what data or operation is required.
+5. Flask communicates with PostgreSQL using the Docker service name `db` and port `5432`.
+6. PostgreSQL stores or retrieves the requested data.
+7. Flask generates the response.
+8. Nginx forwards the response back to the user's browser.
+
+---
+
+## 🔗 Container Communication
+
+The three containers communicate through the Docker Compose network.
+
+**Browser**
+
+↓
+
+**Nginx — Port 80**
+
+↓
+
+**Flask — `web:5000`**
+
+↓
+
+**PostgreSQL — `db:5432`**
+
+Nginx provides the main entry point, Flask handles the application logic, and PostgreSQL provides persistent data storage.
