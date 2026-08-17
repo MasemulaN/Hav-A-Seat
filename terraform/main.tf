@@ -37,7 +37,6 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-
 # ---------------------------------------------------------
 # VPC
 # ---------------------------------------------------------
@@ -90,6 +89,10 @@ resource "aws_subnet" "private" {
   }
 }
 
+# ---------------------------------------------------------
+# Internet Gateway
+# ---------------------------------------------------------
+
 resource "aws_internet_gateway" "hav_a_seat" {
   vpc_id = aws_vpc.hav_a_seat.id
 
@@ -98,6 +101,10 @@ resource "aws_internet_gateway" "hav_a_seat" {
     Project = "Hav-A-Seat"
   }
 }
+
+# ---------------------------------------------------------
+# Public Route Table
+# ---------------------------------------------------------
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.hav_a_seat.id
@@ -121,6 +128,10 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# ---------------------------------------------------------
+# Private Route Table
+# ---------------------------------------------------------
+
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.hav_a_seat.id
 
@@ -138,7 +149,10 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-# Elastic IP for NAT Gateway
+# ---------------------------------------------------------
+# NAT Gateway
+# ---------------------------------------------------------
+
 resource "aws_eip" "nat" {
   domain = "vpc"
 
@@ -148,7 +162,6 @@ resource "aws_eip" "nat" {
   }
 }
 
-# NAT Gateway in Public Subnet 1
 resource "aws_nat_gateway" "hav_a_seat" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public[0].id
@@ -163,12 +176,15 @@ resource "aws_nat_gateway" "hav_a_seat" {
   ]
 }
 
-# Route private subnet traffic through the NAT Gateway
 resource "aws_route" "private_nat" {
   route_table_id         = aws_route_table.private.id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.hav_a_seat.id
 }
+
+# ---------------------------------------------------------
+# Security Groups
+# ---------------------------------------------------------
 
 resource "aws_security_group" "alb" {
   name        = "nm-hav-a-seat-alb-sg"
@@ -254,6 +270,10 @@ resource "aws_security_group" "db" {
   }
 }
 
+# ---------------------------------------------------------
+# Launch Template
+# ---------------------------------------------------------
+
 resource "aws_launch_template" "hav_a_seat" {
   name = "${var.project_name}-launch-template"
 
@@ -264,7 +284,7 @@ resource "aws_launch_template" "hav_a_seat" {
     aws_security_group.app.id
   ]
 
-    user_data = base64encode(<<-EOF
+  user_data = base64encode(<<-EOF
     #!/bin/bash
 
     # Update the system
@@ -290,6 +310,11 @@ resource "aws_launch_template" "hav_a_seat" {
       --name hav-a-seat \
       --restart unless-stopped \
       -p 80:5000 \
+      -e DB_HOST="${aws_db_instance.hav_a_seat.address}" \
+      -e DB_PORT="${aws_db_instance.hav_a_seat.port}" \
+      -e DB_NAME="${aws_db_instance.hav_a_seat.db_name}" \
+      -e DB_USER="${aws_db_instance.hav_a_seat.username}" \
+      -e DB_PASSWORD="${var.db_password}" \
       hav-a-seat
   EOF
   )
@@ -354,6 +379,10 @@ resource "aws_autoscaling_group" "hav_a_seat" {
   }
 }
 
+# ---------------------------------------------------------
+# Application Load Balancer
+# ---------------------------------------------------------
+
 resource "aws_lb" "hav_a_seat" {
   name               = "${var.project_name}-alb"
   internal           = false
@@ -369,6 +398,10 @@ resource "aws_lb" "hav_a_seat" {
     Tier    = "Public"
   }
 }
+
+# ---------------------------------------------------------
+# Target Group
+# ---------------------------------------------------------
 
 resource "aws_lb_target_group" "hav_a_seat" {
   name     = "${var.project_name}-tg"
@@ -389,6 +422,10 @@ resource "aws_lb_target_group" "hav_a_seat" {
   }
 }
 
+# ---------------------------------------------------------
+# ALB Listener
+# ---------------------------------------------------------
+
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.hav_a_seat.arn
   port              = 80
@@ -400,6 +437,10 @@ resource "aws_lb_listener" "http" {
   }
 }
 
+# ---------------------------------------------------------
+# RDS Subnet Group
+# ---------------------------------------------------------
+
 resource "aws_db_subnet_group" "hav_a_seat" {
   name       = "nm-hav-a-seat-db-subnet-group"
   subnet_ids = aws_subnet.private[*].id
@@ -410,6 +451,10 @@ resource "aws_db_subnet_group" "hav_a_seat" {
   }
 }
 
+# ---------------------------------------------------------
+# RDS PostgreSQL
+# ---------------------------------------------------------
+
 resource "aws_db_instance" "hav_a_seat" {
   identifier = "nm-hav-a-seat-db"
 
@@ -417,7 +462,7 @@ resource "aws_db_instance" "hav_a_seat" {
   engine_version = "18.4"
 
   allow_major_version_upgrade = true
-  apply_immediately           = true
+  apply_immediately            = true
 
   instance_class        = "db.t3.micro"
   allocated_storage     = 20
@@ -446,3 +491,4 @@ resource "aws_db_instance" "hav_a_seat" {
     Tier    = "Private"
   }
 }
+
