@@ -357,7 +357,7 @@ resource "aws_autoscaling_group" "hav_a_seat" {
 
   launch_template {
     id      = aws_launch_template.hav_a_seat.id
-    version = "$Latest"
+    version = aws_launch_template.hav_a_seat.latest_version
   }
 
   tag {
