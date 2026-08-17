@@ -264,16 +264,33 @@ resource "aws_launch_template" "hav_a_seat" {
     aws_security_group.app.id
   ]
 
-  user_data = base64encode(<<-EOF
+    user_data = base64encode(<<-EOF
     #!/bin/bash
 
+    # Update the system
     dnf update -y
-    dnf install -y docker
 
+    # Install Docker and Git
+    dnf install -y docker git
+
+    # Start Docker
     systemctl enable docker
     systemctl start docker
 
-    usermod -aG docker ec2-user
+    # Clone the application
+    cd /opt
+    git clone https://github.com/MasemulaN/Hav-A-Seat.git
+
+    # Build the Docker image
+    cd /opt/Hav-A-Seat
+    docker build -t hav-a-seat .
+
+    # Run the application
+    docker run -d \
+      --name hav-a-seat \
+      --restart unless-stopped \
+      -p 80:5000 \
+      hav-a-seat
   EOF
   )
 
