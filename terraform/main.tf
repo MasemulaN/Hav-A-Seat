@@ -271,6 +271,45 @@ resource "aws_security_group" "db" {
 }
 
 # ---------------------------------------------------------
+# IAM Role for EC2 / Systems Manager
+# ---------------------------------------------------------
+
+resource "aws_iam_role" "ec2_ssm" {
+  name = "${var.project_name}-ec2-ssm-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Name    = "${var.project_name}-ec2-ssm-role"
+    Project = "Hav-A-Seat"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_ssm" {
+  role       = aws_iam_role.ec2_ssm.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ec2_ssm" {
+  name = "${var.project_name}-ec2-ssm-profile"
+  role = aws_iam_role.ec2_ssm.name
+}
+
+# ---------------------------------------------------------
 # Launch Template
 # ---------------------------------------------------------
 
@@ -279,6 +318,10 @@ resource "aws_launch_template" "hav_a_seat" {
 
   image_id      = data.aws_ami.amazon_linux.id
   instance_type = "t3.micro"
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_ssm.name
+  }
 
   vpc_security_group_ids = [
     aws_security_group.app.id
@@ -462,7 +505,7 @@ resource "aws_db_instance" "hav_a_seat" {
   engine_version = "18.4"
 
   allow_major_version_upgrade = true
-  apply_immediately            = true
+  apply_immediately           = true
 
   instance_class        = "db.t3.micro"
   allocated_storage     = 20
