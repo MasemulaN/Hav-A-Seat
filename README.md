@@ -287,8 +287,7 @@ GitHub: https://github.com/MasemulaN
 
 # 🏗️ Architecture Diagram
 
-<img width="1142" height="1101" alt="week 2 architect drawio" src="https://github.com/user-attachments/assets/9f6b3ae5-a92b-454f-8ba8-7a89ca4e17c7" />
-
+<img width="1162" height="1101" alt="week 2 drawing drawio" src="https://github.com/user-attachments/assets/02a3cb2f-d3d1-4fd3-ae49-3e69501b3dbf" />
 
 ---
 
