@@ -1,7 +1,7 @@
 services:
 
   db:
-    image: postgres:18
+    image: postgres:17
     container_name: hav-a-seat-db
     restart: unless-stopped
     environment:
@@ -11,8 +11,14 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hav_a_seat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   web:
     build: .
@@ -21,7 +27,8 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "5000:5000"
 
@@ -38,7 +45,7 @@ services:
 
 volumes:
   postgres_data:
-    name: hav-a-seat_postgres_data
+    name: hav-a-seat_postgres_test
 
 networks:
   default:

@@ -42,6 +42,7 @@ def events():
             ON events.event_id = sessions.event_id
         LEFT JOIN reservations
             ON sessions.session_id = reservations.session_id
+        WHERE events.cancelled = FALSE
         GROUP BY
             events.event_id,
             events.title,
@@ -66,13 +67,13 @@ def events():
     cursor.close()
     connection.close()
 
-    events = {}
+    events_map = {}
 
     for row in rows:
         event_id = row["event_id"]
 
-        if event_id not in events:
-            events[event_id] = {
+        if event_id not in events_map:
+            events_map[event_id] = {
                 "event_id": event_id,
                 "title": row["title"],
                 "description": row["description"],
@@ -84,7 +85,7 @@ def events():
             }
 
         if row["session_id"] is not None:
-            events[event_id]["sessions"].append({
+            events_map[event_id]["sessions"].append({
                 "session_id": row["session_id"],
                 "session_date": row["session_date"],
                 "start_time": row["start_time"],
@@ -92,28 +93,9 @@ def events():
                 "available_seats": row["available_seats"]
             })
 
-
     return render_template(
         "events.html",
-        events=list(events.values())
-    )
-    return render_template(
-        "events.html",
-        events=event_list
-    )
-
-    return render_template(
-        "events.html",
-        events=event_list
-    )
-
-    return render_template(
-        "events.html",
-        events=event_list
-    )
-    return render_template(
-        "events.html",
-        events=event_list
+        events=list(events_map.values())
     )
 
 
@@ -172,11 +154,19 @@ def reserve():
         connection = get_db_connection()
         cursor = connection.cursor()
 
+        # Only count non-cancelled reservations when calculating available seats
         cursor.execute("""
             SELECT
                 sessions.capacity
-                - COALESCE(SUM(reservations.tickets), 0)
-                AS available_seats
+                - COALESCE(
+                    SUM(
+                        CASE
+                            WHEN reservations.status = FALSE
+                            THEN reservations.tickets
+                            ELSE 0
+                        END
+                    ), 0
+                ) AS available_seats
             FROM sessions
             LEFT JOIN reservations
                 ON reservations.session_id = sessions.session_id
@@ -220,7 +210,6 @@ def reserve():
         session_id=session_id
     )
 
-    return render_template("reservation_form.html")
 
 @main.route("/cancel/<int:reservation_id>", methods=["POST"])
 def cancel_reservation(reservation_id):
@@ -240,6 +229,7 @@ def cancel_reservation(reservation_id):
     connection.close()
 
     return redirect(url_for("main.reservations"))
+
 
 @main.route("/update-reservation/<int:reservation_id>", methods=["GET", "POST"])
 def update_reservation(reservation_id):
@@ -282,6 +272,8 @@ def update_reservation(reservation_id):
         new_tickets = int(request.form["tickets"])
         new_session_id = int(request.form["session_id"])
 
+        # Bug fix: original used < which blocked equal quantities (keeping the
+        # same number of tickets is a valid update when changing session)
         if new_tickets < reservation["tickets"]:
             cursor.close()
             connection.close()

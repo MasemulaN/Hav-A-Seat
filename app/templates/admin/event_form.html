@@ -1,0 +1,306 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}
+    {{ "Edit Event" if action == "edit" else "Add Event" }} | Hav-A-Seat Admin
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center mb-4">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h2 class="mb-0">
+        {{ "Edit Event" if action == "edit" else "Add Event" }}
+    </h2>
+</div>
+
+<form method="POST" novalidate>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Event details                                                        -->
+    <!-- ------------------------------------------------------------------ -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold bg-dark text-white">
+            <i class="bi bi-info-circle"></i>
+            Event Details
+        </div>
+        <div class="card-body">
+
+            <div class="mb-3">
+                <label for="title" class="form-label">
+                    Title <span class="text-danger">*</span>
+                </label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="title"
+                    name="title"
+                    value="{{ event.title if event else '' }}"
+                    required
+                    maxlength="255"
+                >
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea
+                    class="form-control"
+                    id="description"
+                    name="description"
+                    rows="3"
+                    maxlength="255"
+                >{{ event.description if event and event.description else '' }}</textarea>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="category"
+                        name="category"
+                        value="{{ event.category if event and event.category else '' }}"
+                        maxlength="255"
+                        list="category-suggestions"
+                    >
+                    <datalist id="category-suggestions">
+                        <option value="Technology">
+                        <option value="Business">
+                        <option value="Music">
+                        <option value="Networking">
+                        <option value="Education">
+                        <option value="Sport">
+                        <option value="Arts">
+                        <option value="Food & Drink">
+                        <option value="Community">
+                    </datalist>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="location" class="form-label">Location</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="location"
+                        name="location"
+                        value="{{ event.location if event and event.location else '' }}"
+                        maxlength="255"
+                    >
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input
+                        type="date"
+                        class="form-control"
+                        id="start_date"
+                        name="start_date"
+                        value="{{ event.start_date if event and event.start_date else '' }}"
+                    >
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input
+                        type="date"
+                        class="form-control"
+                        id="end_date"
+                        name="end_date"
+                        value="{{ event.end_date if event and event.end_date else '' }}"
+                    >
+                </div>
+            </div>
+
+            {% if action == "edit" %}
+            <div class="form-check mt-1">
+                <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="cancelled"
+                    name="cancelled"
+                    {% if event and event.cancelled %}checked{% endif %}
+                >
+                <label class="form-check-label text-danger" for="cancelled">
+                    Mark this event as cancelled
+                </label>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Sessions                                                             -->
+    <!-- ------------------------------------------------------------------ -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold bg-dark text-white d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-clock"></i> Sessions</span>
+            <button type="button" class="btn btn-sm btn-light" id="add-session-btn">
+                <i class="bi bi-plus-lg"></i> Add Session
+            </button>
+        </div>
+        <div class="card-body">
+
+            <!-- Existing sessions (edit mode only) -->
+            {% if sessions %}
+                {% for s in sessions %}
+                <div class="row g-2 align-items-end mb-3 existing-session border-bottom pb-3">
+
+                    <input type="hidden" name="existing_session_id[]" value="{{ s.session_id }}">
+
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Date</label>
+                        <input
+                            type="date"
+                            class="form-control form-control-sm"
+                            name="existing_session_date[]"
+                            value="{{ s.session_date }}"
+                            required
+                        >
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Start</label>
+                        <input
+                            type="time"
+                            class="form-control form-control-sm"
+                            name="existing_start_time[]"
+                            value="{{ s.start_time }}"
+                        >
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">End</label>
+                        <input
+                            type="time"
+                            class="form-control form-control-sm"
+                            name="existing_end_time[]"
+                            value="{{ s.end_time }}"
+                        >
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Capacity</label>
+                        <input
+                            type="number"
+                            class="form-control form-control-sm"
+                            name="existing_capacity[]"
+                            value="{{ s.capacity }}"
+                            min="1"
+                            required
+                        >
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end gap-2">
+                        <!-- Hidden checkbox — checked by JS when remove is clicked -->
+                        <input type="checkbox" name="remove_session[]" value="{{ s.session_id }}"
+                               id="remove-{{ s.session_id }}" class="d-none remove-cb">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-danger remove-existing-btn"
+                            data-target="remove-{{ s.session_id }}"
+                            title="Remove session"
+                        >
+                            <i class="bi bi-x-lg"></i> Remove
+                        </button>
+                    </div>
+
+                </div>
+                {% endfor %}
+            {% elif action == "edit" %}
+                <p class="text-muted small mb-3">No sessions yet. Add one below.</p>
+            {% endif %}
+
+            <!-- Container for dynamically added new sessions -->
+            <div id="new-sessions-container"></div>
+
+            {% if action == "create" %}
+                <p class="text-muted small">
+                    <i class="bi bi-info-circle"></i>
+                    You can add sessions now or after the event is created by editing it.
+                </p>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Submit                                                               -->
+    <!-- ------------------------------------------------------------------ -->
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-dark">
+            <i class="bi bi-check-lg"></i>
+            {{ "Save Changes" if action == "edit" else "Create Event" }}
+        </button>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+            Cancel
+        </a>
+    </div>
+
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── New session row template ───────────────────────────────────────────────
+function buildSessionRow() {
+    const div = document.createElement("div");
+    div.className = "row g-2 align-items-end mb-3 new-session border-bottom pb-3";
+    div.innerHTML = `
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Date</label>
+            <input type="date" class="form-control form-control-sm" name="session_date[]" required>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted">Start</label>
+            <input type="time" class="form-control form-control-sm" name="start_time[]">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted">End</label>
+            <input type="time" class="form-control form-control-sm" name="end_time[]">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted">Capacity</label>
+            <input type="number" class="form-control form-control-sm" name="capacity[]" min="1" required>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="button" class="btn btn-sm btn-outline-danger remove-new-btn">
+                <i class="bi bi-x-lg"></i> Remove
+            </button>
+        </div>
+    `;
+    return div;
+}
+
+// Add new session row
+document.getElementById("add-session-btn").addEventListener("click", function () {
+    const container = document.getElementById("new-sessions-container");
+    container.appendChild(buildSessionRow());
+});
+
+// Remove a newly added session row
+document.getElementById("new-sessions-container").addEventListener("click", function (e) {
+    const btn = e.target.closest(".remove-new-btn");
+    if (btn) btn.closest(".new-session").remove();
+});
+
+// Remove an existing session (mark the hidden checkbox, hide the row)
+document.addEventListener("click", function (e) {
+    const btn = e.target.closest(".remove-existing-btn");
+    if (!btn) return;
+
+    const cbId  = btn.getAttribute("data-target");
+    const cb    = document.getElementById(cbId);
+    const row   = btn.closest(".existing-session");
+
+    cb.checked = true;
+    row.style.opacity = "0.4";
+    row.querySelectorAll("input:not([type=hidden]):not([type=checkbox]), button").forEach(el => {
+        el.disabled = true;
+    });
+    btn.textContent = "Removed";
+    btn.classList.replace("btn-outline-danger", "btn-danger");
+});
+</script>
+{% endblock %}
