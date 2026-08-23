@@ -50,8 +50,10 @@ def validate_capacity(value):
         int: The validated positive capacity.
 
     Raises:
-        ValueError: If the capacity is empty, non-numeric, zero, or negative.
+        ValueError: If the capacity is empty, non-numeric, zero,
+        or negative.
     """
+
     value = value.strip()
 
     if not value:
@@ -60,14 +62,10 @@ def validate_capacity(value):
     try:
         capacity = int(value)
     except (TypeError, ValueError):
-        raise ValueError(
-            "Capacity must be a valid whole number."
-        )
+        raise ValueError("Capacity must be a valid whole number.")
 
     if capacity <= 0:
-        raise ValueError(
-            "Capacity must be greater than 0."
-        )
+        raise ValueError("Capacity must be greater than 0.")
 
     return capacity
 
@@ -90,19 +88,21 @@ def login():
         connection = get_db_connection()
         cursor = connection.cursor()
 
-        cursor.execute(
-            """
-            SELECT admin_id, username, password_hash
-            FROM admin_users
-            WHERE username = %s
-            """,
-            (username,),
-        )
+        try:
+            cursor.execute(
+                """
+                SELECT admin_id, username, password_hash
+                FROM admin_users
+                WHERE username = %s
+                """,
+                (username,),
+            )
 
-        admin_user = cursor.fetchone()
+            admin_user = cursor.fetchone()
 
-        cursor.close()
-        connection.close()
+        finally:
+            cursor.close()
+            connection.close()
 
         if admin_user and check_password_hash(
             admin_user["password_hash"],
@@ -119,10 +119,7 @@ def login():
 
             return redirect(url_for("admin.dashboard"))
 
-        flash(
-            "Invalid username or password.",
-            "danger",
-        )
+        flash("Invalid username or password.", "danger")
 
     return render_template("admin/login.html")
 
@@ -133,10 +130,7 @@ def logout():
 
     session.clear()
 
-    flash(
-        "You have been signed out.",
-        "info",
-    )
+    flash("You have been signed out.", "info")
 
     return redirect(url_for("admin.login"))
 
@@ -153,38 +147,40 @@ def dashboard():
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    cursor.execute(
-        """
-        SELECT
-            e.event_id,
-            e.title,
-            e.category,
-            e.location,
-            e.start_date,
-            e.end_date,
-            e.cancelled,
-            COUNT(s.session_id) AS session_count
-        FROM events e
-        LEFT JOIN sessions s
-            ON e.event_id = s.event_id
-        GROUP BY
-            e.event_id,
-            e.title,
-            e.category,
-            e.location,
-            e.start_date,
-            e.end_date,
-            e.cancelled
-        ORDER BY
-            e.start_date DESC,
-            e.title
-        """
-    )
+    try:
+        cursor.execute(
+            """
+            SELECT
+                e.event_id,
+                e.title,
+                e.category,
+                e.location,
+                e.start_date,
+                e.end_date,
+                e.cancelled,
+                COUNT(s.session_id) AS session_count
+            FROM events e
+            LEFT JOIN sessions s
+                ON e.event_id = s.event_id
+            GROUP BY
+                e.event_id,
+                e.title,
+                e.category,
+                e.location,
+                e.start_date,
+                e.end_date,
+                e.cancelled
+            ORDER BY
+                e.start_date DESC,
+                e.title
+            """
+        )
 
-    events = cursor.fetchall()
+        events = cursor.fetchall()
 
-    cursor.close()
-    connection.close()
+    finally:
+        cursor.close()
+        connection.close()
 
     return render_template(
         "admin/dashboard.html",
@@ -211,14 +207,11 @@ def create_event():
 
         # Basic event validation.
         if not title:
-            flash(
-                "Event title is required.",
-                "danger",
-            )
+            flash("Event title is required.", "danger")
 
             return render_template(
                 "admin/event_form.html",
-                event=None,
+                event=request.form,
                 action="create",
             )
 
@@ -235,21 +228,12 @@ def create_event():
             )
 
         # Read submitted session data.
-        session_dates = request.form.getlist(
-            "session_date[]"
-        )
-        start_times = request.form.getlist(
-            "start_time[]"
-        )
-        end_times = request.form.getlist(
-            "end_time[]"
-        )
-        capacities = request.form.getlist(
-            "capacity[]"
-        )
+        session_dates = request.form.getlist("session_date[]")
+        start_times = request.form.getlist("start_time[]")
+        end_times = request.form.getlist("end_time[]")
+        capacities = request.form.getlist("capacity[]")
 
-        # Validate capacities before writing anything
-        # to the database.
+        # Validate capacities before writing anything to the database.
         validated_capacities = []
 
         for capacity in capacities:
@@ -263,10 +247,7 @@ def create_event():
                     validate_capacity(capacity)
                 )
             except ValueError as error:
-                flash(
-                    str(error),
-                    "danger",
-                )
+                flash(str(error), "danger")
 
                 return render_template(
                     "admin/event_form.html",
@@ -364,10 +345,7 @@ def create_event():
 # Edit event
 # ---------------------------------------------------------------------------
 
-@admin.route(
-    "/events/<int:event_id>/edit",
-    methods=["GET", "POST"],
-)
+@admin.route("/events/<int:event_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_event(event_id):
     """Edit an existing event and manage its sessions."""
@@ -386,10 +364,7 @@ def edit_event(event_id):
         cursor.close()
         connection.close()
 
-        flash(
-            "Event not found.",
-            "danger",
-        )
+        flash("Event not found.", "danger")
 
         return redirect(url_for("admin.dashboard"))
 
@@ -404,10 +379,7 @@ def edit_event(event_id):
 
         # Basic event validation.
         if not title:
-            flash(
-                "Event title is required.",
-                "danger",
-            )
+            flash("Event title is required.", "danger")
 
             cursor.close()
             connection.close()
@@ -461,10 +433,7 @@ def edit_event(event_id):
                     validate_capacity(capacity)
                 )
             except ValueError as error:
-                flash(
-                    str(error),
-                    "danger",
-                )
+                flash(str(error), "danger")
 
                 cursor.close()
                 connection.close()
@@ -479,18 +448,10 @@ def edit_event(event_id):
         # Validate new sessions.
         # ---------------------------------------------------------------
 
-        new_dates = request.form.getlist(
-            "session_date[]"
-        )
-        new_starts = request.form.getlist(
-            "start_time[]"
-        )
-        new_ends = request.form.getlist(
-            "end_time[]"
-        )
-        new_caps = request.form.getlist(
-            "capacity[]"
-        )
+        new_dates = request.form.getlist("session_date[]")
+        new_starts = request.form.getlist("start_time[]")
+        new_ends = request.form.getlist("end_time[]")
+        new_caps = request.form.getlist("capacity[]")
 
         validated_new_capacities = []
 
@@ -504,10 +465,7 @@ def edit_event(event_id):
                     validate_capacity(capacity)
                 )
             except ValueError as error:
-                flash(
-                    str(error),
-                    "danger",
-                )
+                flash(str(error), "danger")
 
                 cursor.close()
                 connection.close()
@@ -560,10 +518,7 @@ def edit_event(event_id):
                     WHERE session_id = %s
                       AND event_id = %s
                     """,
-                    (
-                        int(session_id),
-                        event_id,
-                    ),
+                    (int(session_id), event_id),
                 )
 
             # Update existing sessions.
@@ -690,57 +645,90 @@ def edit_event(event_id):
 )
 @login_required
 def delete_event(event_id):
-    """Delete an event and its sessions."""
+    """
+    Permanently delete an event and all related records.
+
+    Reservations must be deleted before sessions because the
+    reservations table references sessions without ON DELETE CASCADE.
+    Sessions are then deleted before the event.
+    """
 
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    cursor.execute(
-        """
-        SELECT event_id, title
-        FROM events
-        WHERE event_id = %s
-        """,
-        (event_id,),
-    )
-
-    event = cursor.fetchone()
-
-    if event is None:
-        cursor.close()
-        connection.close()
-
-        flash(
-            "Event not found.",
-            "danger",
-        )
-
-        return redirect(url_for("admin.dashboard"))
-
-    if request.method == "POST":
-        title = event["title"]
-
+    try:
+        # Check that the event exists.
         cursor.execute(
-            "DELETE FROM events WHERE event_id = %s",
+            """
+            SELECT event_id, title
+            FROM events
+            WHERE event_id = %s
+            """,
             (event_id,),
         )
 
-        connection.commit()
+        event = cursor.fetchone()
 
-        cursor.close()
-        connection.close()
+        if event is None:
+            flash("Event not found.", "danger")
+            return redirect(url_for("admin.dashboard"))
 
-        flash(
-            f'Event "{title}" has been permanently deleted.',
-            "success",
+        if request.method == "POST":
+            title = event["title"]
+
+            # Delete reservations belonging to the event's sessions.
+            cursor.execute(
+                """
+                DELETE FROM reservations
+                WHERE session_id IN (
+                    SELECT session_id
+                    FROM sessions
+                    WHERE event_id = %s
+                )
+                """,
+                (event_id,),
+            )
+
+            # Delete the event's sessions.
+            #
+            # The sessions -> events relationship has ON DELETE CASCADE,
+            # but we delete sessions explicitly so the deletion order is
+            # clear and independent of that database constraint.
+            cursor.execute(
+                """
+                DELETE FROM sessions
+                WHERE event_id = %s
+                """,
+                (event_id,),
+            )
+
+            # Finally delete the event itself.
+            cursor.execute(
+                """
+                DELETE FROM events
+                WHERE event_id = %s
+                """,
+                (event_id,),
+            )
+
+            connection.commit()
+
+            flash(
+                f'Event "{title}" has been permanently deleted.',
+                "success",
+            )
+
+            return redirect(url_for("admin.dashboard"))
+
+        return render_template(
+            "admin/delete_confirm.html",
+            event=event,
         )
 
-        return redirect(url_for("admin.dashboard"))
+    except Exception:
+        connection.rollback()
+        raise
 
-    cursor.close()
-    connection.close()
-
-    return render_template(
-        "admin/delete_confirm.html",
-        event=event,
-    )
+    finally:
+        cursor.close()
+        connection.close()
