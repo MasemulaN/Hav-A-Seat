@@ -356,7 +356,7 @@ resource "aws_iam_role" "github_actions" {
           }
 
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:MasemulaN/Hav-A-Seat:ref:refs/heads/main"
+            "token.actions.githubusercontent.com:sub" = "repo:MasemulaN@147561974/Hav-A-Seat@1325273372:ref:refs/heads/main"
           }
         }
       }

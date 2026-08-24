@@ -83,17 +83,64 @@ jobs:
     needs: docker
 
     steps:
+
+      # -----------------------------------------------------
+      # Debug GitHub Actions OIDC claims
+      # -----------------------------------------------------
+
+      - name: Debug GitHub OIDC claims
+        shell: bash
+        run: |
+          TOKEN_RESPONSE=$(curl -sSf \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL")
+
+          TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.value')
+
+          echo "$TOKEN" | jq -R 'split(".") | .[1] | @base64d | fromjson | {
+            iss,
+            sub,
+            aud,
+            repository,
+            repository_id,
+            repository_owner,
+            repository_owner_id,
+            ref,
+            workflow,
+            event_name
+          }'
+
+      # -----------------------------------------------------
+      # Authenticate GitHub Actions with AWS using OIDC
+      # -----------------------------------------------------
+
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: af-south-1
+          audience: sts.amazonaws.com
+
+      # -----------------------------------------------------
+      # Verify AWS authentication
+      # -----------------------------------------------------
+
+      - name: Verify AWS identity
+        shell: bash
+        run: |
+          echo "Verifying AWS authentication..."
+          aws sts get-caller-identity
+
+      # -----------------------------------------------------
+      # Find running Hav-A-Seat EC2 instances
+      # -----------------------------------------------------
 
       - name: Find running application instances
         id: instances
         shell: bash
         run: |
           INSTANCE_IDS=$(aws ec2 describe-instances \
+            --region af-south-1 \
             --filters \
               "Name=tag:Project,Values=Hav-A-Seat" \
               "Name=instance-state-name,Values=running" \
@@ -110,11 +157,16 @@ jobs:
 
           echo "instance_ids=$INSTANCE_IDS" >> "$GITHUB_OUTPUT"
 
+      # -----------------------------------------------------
+      # Deploy latest Docker image using SSM
+      # -----------------------------------------------------
+
       - name: Deploy latest image using SSM
         id: deploy
         shell: bash
         run: |
           COMMAND_ID=$(aws ssm send-command \
+            --region af-south-1 \
             --targets "Key=tag:Project,Values=Hav-A-Seat" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploy Hav-A-Seat ${GITHUB_SHA}" \
@@ -141,6 +193,10 @@ jobs:
           echo "SSM Command ID: $COMMAND_ID"
           echo "command_id=$COMMAND_ID" >> "$GITHUB_OUTPUT"
 
+      # -----------------------------------------------------
+      # Wait for SSM deployment
+      # -----------------------------------------------------
+
       - name: Wait for deployment
         shell: bash
         run: |
@@ -151,6 +207,7 @@ jobs:
           for i in {1..30}; do
 
             STATUS=$(aws ssm list-command-invocations \
+              --region af-south-1 \
               --command-id "$COMMAND_ID" \
               --details \
               --query "CommandInvocations[0].Status" \
@@ -163,10 +220,15 @@ jobs:
                 echo "Deployment succeeded."
                 exit 0
                 ;;
+
               Failed|Cancelled|TimedOut)
                 echo "Deployment failed with status: $STATUS"
+                echo ""
+                echo "SSM command output:"
+                echo ""
 
                 aws ssm list-command-invocations \
+                  --region af-south-1 \
                   --command-id "$COMMAND_ID" \
                   --details \
                   --query "CommandInvocations[].CommandPlugins[].Output" \
@@ -182,16 +244,35 @@ jobs:
           echo "Deployment timed out waiting for SSM."
           exit 1
 
+      # -----------------------------------------------------
+      # Verify deployment on EC2
+      # -----------------------------------------------------
+
       - name: Verify deployment
         shell: bash
         run: |
-          aws ssm send-command \
+          VERIFY_COMMAND_ID=$(aws ssm send-command \
+            --region af-south-1 \
             --targets "Key=tag:Project,Values=Hav-A-Seat" \
             --document-name "AWS-RunShellScript" \
-            --comment "Verify Hav-A-Seat deployment" \
+            --comment "Verify Hav-A-Seat deployment ${GITHUB_SHA}" \
             --parameters 'commands=[
+              "echo Checking running container...",
               "docker ps --filter name=hav-a-seat --format \"{{.Names}} | {{.Image}} | {{.Status}}\"",
+              "echo Checking container image...",
               "docker inspect hav-a-seat --format \"{{.Config.Image}}\""
             ]' \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "Verification SSM Command ID: $VERIFY_COMMAND_ID"
+
+          sleep 5
+
+          aws ssm list-command-invocations \
+            --region af-south-1 \
+            --command-id "$VERIFY_COMMAND_ID" \
+            --details \
+            --query "CommandInvocations[].CommandPlugins[].Output" \
             --output text
 
