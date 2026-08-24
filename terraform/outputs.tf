@@ -37,3 +37,8 @@ output "rds_port" {
   description = "Port used by the PostgreSQL RDS instance"
   value       = aws_db_instance.hav_a_seat.port
 }
+
+output "autoscaling_group_name" {
+  description = "Name of the Hav-A-Seat Auto Scaling Group"
+  value       = aws_autoscaling_group.hav_a_seat.name
+}
