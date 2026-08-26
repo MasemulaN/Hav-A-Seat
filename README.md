@@ -138,6 +138,13 @@ This allows the latest application version to be deployed while also retaining c
 
 ---
 
+# 🏗️ AWS Architecture
+
+<img width="1162" height="1101" alt="aws drawing" src="https://github.com/user-attachments/assets/d1396406-95ba-4709-96ae-8174ef9e56a3" />
+
+
+---
+
 ## ☁️ AWS Infrastructure
 
 The application is deployed to AWS in the `af-south-1` region.
