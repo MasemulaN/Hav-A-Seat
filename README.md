@@ -1,52 +1,77 @@
-# Hav-A-Seat 🎟️
+# 🎟️ Hav-A-Seat
 
-Hav-A-Seat is a Flask-based event booking and reservation system developed as part of the Mid-Level Cloud Engineering Project.
+Hav-A-Seat is a Flask-based event reservation system developed as part of the CAPACITI Mid-Level Cloud Engineering Project.
 
-The application allows users to browse events, view available sessions, make reservations, view their reservations, update reservations, and cancel reservations.
+The application allows users to view upcoming events, select available sessions, and make reservations. It also includes an administrative interface for managing events and sessions.
 
-Week 1 focused on building the application, connecting it to PostgreSQL, containerizing the application with Docker, and configuring Nginx as a reverse proxy.
-
----
-
-## ✨ Features
-
-- Browse available events
-- View event details and available sessions
-- View session availability
-- Make event reservations
-- View reservations using an email address
-- Update reservations
-- Cancel reservations
-- Automatically calculate available seats
-- Prevent bookings when there are insufficient seats
-- Store application data in PostgreSQL
-- Run the application using Docker
-- Run PostgreSQL in a Docker container
-- Use Docker Compose to manage the application stack
-- Use Nginx as a reverse proxy
+The project was developed progressively from a locally running Flask application into a containerised application deployed on AWS, with infrastructure managed using Terraform and automated deployment through GitHub Actions.
 
 ---
 
-## 🛠️ Technology Stack
+## 📌 Project Overview
 
-- **Backend:** Python, Flask
-- **Frontend:** HTML, CSS, Jinja2 Templates
-- **Database:** PostgreSQL
-- **Database Driver:** Psycopg
-- **Web Server / Reverse Proxy:** Nginx
-- **Containerization:** Docker
-- **Container Management:** Docker Compose
-- **Version Control:** Git & GitHub
+Hav-A-Seat demonstrates the development and deployment of a cloud-ready web application using:
+
+- 🐍 Python and Flask
+- 🐘 PostgreSQL
+- 🐳 Docker
+- ☁️ Amazon Web Services (AWS)
+- 🏗️ Terraform
+- 🔄 GitHub Actions
+- 🔐 GitHub Actions OIDC authentication
+- 📡 AWS Systems Manager (SSM)
+- ⚖️ Application Load Balancer (ALB)
+- 📈 EC2 Auto Scaling
+- 🔒 AWS networking and security controls
+
+The project covers application development, database integration, containerisation, cloud infrastructure, security, scalability, and CI/CD automation.
+
+---
+
+## ✨ Application Features
+
+### 👤 User Features
+
+- View upcoming events
+- View event descriptions, categories, locations, and dates
+- View available sessions for each event
+- View session times and available seats
+- Select a session for a reservation
+- Submit a reservation with:
+  - Full name
+  - Email address
+  - Number of tickets
+- Receive appropriate validation and reservation responses
+
+### 🛠️ Admin Features
+
+The application includes an administrative interface that allows authorised administrators to manage event information.
+
+Admin functionality includes:
+
+- 🔐 Admin login
+- 📊 Admin dashboard
+- ➕ Create events
+- ✏️ Edit events
+- 🗑️ Delete events
+- 📅 Manage event sessions
+- 👥 View reservation-related information
+- 🚫 Handle cancelled events
+- 🎫 Validate session capacity
+
+The admin interface uses separate templates and authentication controls from the public-facing application.
 
 ---
 
 ## 🗄️ Database
 
-The application uses PostgreSQL to store events, sessions, and reservations.
+Hav-A-Seat uses PostgreSQL as its relational database.
 
-### 📅 Events
+The database contains three primary tables:
 
-The `events` table stores information about each event, including:
+### 🎭 Events
+
+Stores information about events, including:
 
 - Event ID
 - Title
@@ -57,11 +82,9 @@ The `events` table stores information about each event, including:
 - End date
 - Cancellation status
 
-Events are distributed across different locations and categories.
-
 ### 🕐 Sessions
 
-The `sessions` table stores individual sessions belonging to an event.
+Stores individual sessions belonging to events.
 
 Each session contains:
 
@@ -72,254 +95,622 @@ Each session contains:
 - End time
 - Capacity
 
-An event can have multiple sessions. This allows an event to run over multiple days or have multiple sessions on the same day.
+Sessions are linked to events using a foreign key with cascading deletion.
 
-### 🎫 Reservations
+### 🎟️ Reservations
 
-The `reservations` table stores user bookings.
+Stores user reservations.
 
-Reservation information includes:
+Each reservation contains:
 
 - Reservation ID
 - Session ID
-- Customer name
+- Full name
 - Email address
 - Number of tickets
 - Reservation status
-- Created and updated timestamps
+- Creation timestamp
 
-The application uses session capacity and active reservations to determine the number of available seats.
-
----
-
-## 🎯 Week 1 Objectives
-
-The main focus of Week 1 was to establish the application and containerization foundation for the project.
-
-The completed work includes:
-
-- Building the Flask web application
-- Connecting Flask to PostgreSQL
-- Implementing event and session functionality
-- Implementing reservation functionality
-- Implementing reservation updates and cancellations
-- Implementing available-seat calculations
-- Creating a Dockerfile
-- Containerizing the Flask application
-- Containerizing the PostgreSQL database
-- Creating a Docker Compose configuration
-- Configuring Nginx as a reverse proxy
-- Testing the application locally
-- Preparing the GitHub repository
+Database constraints are used to prevent invalid values such as zero or negative ticket quantities and session capacities.
 
 ---
 
-## 🚀 Running the Application
+## 🐳 Docker
 
-### 📋 Prerequisites
+The Flask application is containerised using Docker.
 
-The following software is required:
+The Docker image installs the required Python dependencies and runs the application using Gunicorn.
 
-- Docker Desktop
-- Git
+The application container exposes port `5000` internally.
 
-Python is also required when running the application directly outside Docker.
+In the AWS environment, the container is published on port `80` on the EC2 instances and forwards traffic to the Flask/Gunicorn application running on port `5000`.
 
----
+The Docker image is published to Docker Hub as:
 
-## 📥 Clone the Repository
+`masemulan/hav-a-seat`
 
-Clone the repository using:
+The CI/CD pipeline publishes both:
 
-`git clone https://github.com/MasemulaN/Hav-A-Seat.git`
+- `latest`
+- Git commit SHA tagged images
 
-Then navigate into the project:
-
-`cd Hav-A-Seat`
+This allows the latest application version to be deployed while also retaining commit-specific image versions.
 
 ---
 
-## 🔐 Environment Variables
+## ☁️ AWS Infrastructure
 
-The application uses environment variables for database configuration.
+The application is deployed to AWS in the `af-south-1` region.
 
-Example configuration:
+The infrastructure was designed using multiple Availability Zones to improve availability.
 
-`DB_HOST=localhost`
+### 🌐 Network Architecture
 
-`DB_PORT=5432`
+The VPC contains:
 
-`DB_NAME=hav_a_seat`
+- 2 public subnets
+- 2 private subnets
+- Resources distributed across 2 Availability Zones
+- Internet connectivity for public resources
+- Private networking for application/database resources
+- Security groups controlling communication between components
 
-`DB_USER=postgres`
+The infrastructure was provisioned and managed using Terraform.
 
-`DB_PASSWORD=your_password`
+### ⚖️ Application Load Balancer
 
-The actual `.env` file is excluded from the GitHub repository using `.gitignore`.
+An Application Load Balancer provides the public entry point for the application.
 
-When the application runs inside Docker Compose, the Flask container communicates with PostgreSQL using the Docker service name `db`.
+The ALB distributes incoming HTTP traffic between the running EC2 application instances.
 
-The Docker database configuration uses:
+The target group listens on port `80`.
 
-`DB_HOST=db`
+The EC2 instances are registered as targets and are monitored using ALB health checks.
 
-`DB_PORT=5432`
+Both application instances have been verified as healthy.
+
+### 🖥️ EC2 and Auto Scaling
+
+The application runs on EC2 instances distributed across two Availability Zones.
+
+The instances are managed using an Auto Scaling Group.
+
+The application container runs on each instance using:
+
+- Container name: `hav-a-seat`
+- Docker image: `masemulan/hav-a-seat:latest`
+- Host port: `80`
+- Container port: `5000`
+
+The Auto Scaling configuration supports multiple application instances and provides redundancy across Availability Zones.
+
+### 🗃️ Amazon RDS
+
+PostgreSQL is hosted using Amazon RDS for the cloud deployment.
+
+The RDS database is separated from the application instances and is accessed using the appropriate network and security configuration.
+
+### 📡 AWS Systems Manager
+
+AWS Systems Manager (SSM) is used to remotely execute deployment commands on the EC2 instances.
+
+This allows the CI/CD pipeline to deploy the application without requiring SSH access to the EC2 instances.
+
+### 🔄 Why SSM Was Used Instead of SSH During Week 3
+
+The Week 3 requirements in the project PDF specify that the CI/CD pipeline should:
+
+1. Trigger when code is pushed to the `main` branch
+2. Build the Docker image
+3. Push the image to Docker Hub
+4. SSH into the EC2 instances
+5. Pull the latest image
+6. Restart the container
+
+The project therefore explicitly mentions SSH as the intended method for remotely reaching the EC2 instances during deployment.
+
+However, Hav-A-Seat's actual AWS architecture created an important networking and security consideration.
+
+### 🔐 The EC2 Instances Are in Private Subnets
+
+The application EC2 instances are deployed into private subnets as part of the 3-tier AWS architecture.
+
+The public Application Load Balancer receives internet traffic and forwards it to the private EC2 application instances. The EC2 instances are therefore not designed to be directly reachable from the public internet.
+
+GitHub Actions hosted runners run outside the Hav-A-Seat VPC. A normal SSH connection from a GitHub-hosted runner to a private EC2 IP address would therefore not work directly.
+
+To make literal SSH deployment work, an additional access mechanism such as a bastion host, VPN, or another network path into the VPC would be required. That would add infrastructure, configuration, maintenance, and additional security considerations that are not necessary for this project.
+
+### 📡 Why AWS Systems Manager Was Chosen
+
+AWS Systems Manager (SSM) provides a way for GitHub Actions to send commands to the EC2 instances through AWS without requiring the instances to be publicly accessible through SSH.
+
+This fits the existing Hav-A-Seat architecture because the EC2 instances already use an IAM role with the `AmazonSSMManagedInstanceCore` policy.
+
+The deployment flow therefore becomes:
+
+GitHub Actions
+    ↓
+Authenticate to AWS using GitHub OIDC
+    ↓
+AWS Systems Manager
+    ↓
+Send deployment commands to the EC2 instances
+    ↓
+Pull the Docker image
+    ↓
+Stop/remove the old container
+    ↓
+Start the new container
+    ↓
+Verify deployment
+
+### 🛡️ Security Advantages of SSM
+
+Using SSM instead of SSH provides several security and operational advantages:
+
+- 🔐 No SSH private keys need to be stored or managed by GitHub Actions.
+- 🌐 The EC2 instances do not need publicly accessible SSH port 22 for the CI/CD deployment.
+- 🪪 Access is controlled through AWS IAM roles and policies.
+- 🔑 GitHub Actions authenticates to AWS using OIDC rather than long-lived AWS access keys.
+- 📡 Deployment commands are sent through AWS Systems Manager rather than by opening an SSH session from the GitHub runner.
+- 🛡️ The approach reduces the attack surface associated with exposing SSH access and simplifies credential management.
+
+### 📈 Why SSM Also Fits the Auto Scaling Group
+
+Hav-A-Seat uses an Auto Scaling Group rather than relying on one permanent EC2 instance.
+
+Because instances in an Auto Scaling Group can be replaced or scaled out, using fixed EC2 IP addresses for SSH deployment would be fragile. The CI/CD deployment can instead discover the current running application instances and use SSM to send the deployment commands to them.
+
+This means the deployment process is better aligned with the scalable architecture:
+
+GitHub Actions
+    ↓
+AWS SSM
+    ↓
+Current Hav-A-Seat EC2 instances
+    ↓
+Docker image deployment
+
+A future EC2 instance created by the Auto Scaling Group must also be configured to obtain and run the appropriate application image when it launches. This is important because a deployment should not depend only on the particular EC2 instances that happened to exist when the pipeline ran.
+
+### ⚠️ Relationship to the Project Requirement
+
+SSM does not change the purpose of the Week 3 requirement. The requirement is to automate the remote deployment of the new Docker image to the EC2 application servers.
+
+The difference is the remote-access mechanism:
+
+- Project specification: SSH into EC2
+- Hav-A-Seat implementation: AWS Systems Manager (SSM)
+
+This is a deliberate architecture decision based on the project's private-subnet and Auto Scaling design.
+
+The implementation still fulfils the deployment sequence required for Week 3:
+
+1. Push code to `main`
+2. GitHub Actions builds the Docker image
+3. GitHub Actions pushes the image to Docker Hub
+4. GitHub Actions authenticates to AWS using OIDC
+5. SSM sends deployment commands to the EC2 instances
+6. EC2 instances pull the new Docker image
+7. The old container is stopped and replaced
+8. The deployment is verified
+
+For this project, SSM was therefore selected instead of SSH because it provides a more secure and AWS-native deployment mechanism that fits the existing private-subnet and Auto Scaling architecture, without requiring an additional bastion host or publicly exposed SSH access.
 
 ---
 
-## 🐳 Running with Docker Compose
+## 🏗️ Infrastructure as Code
 
-Build and start the application using:
+Terraform is used to define and manage the AWS infrastructure.
 
-`docker compose up -d --build`
+The Terraform configuration includes resources such as:
 
-Check the running containers using:
+- VPC networking
+- Public and private subnets
+- Route tables
+- Internet Gateway
+- NAT Gateway
+- Security groups
+- EC2 launch configuration
+- Auto Scaling Group
+- Application Load Balancer
+- Target group
+- RDS PostgreSQL
+- IAM roles and policies
+- GitHub Actions OIDC configuration
 
-`docker compose ps`
+Terraform state is used to track the infrastructure managed by the project.
 
-The Docker Compose stack contains three services:
+Infrastructure changes are reviewed using:
 
-- `hav-a-seat-nginx`
-- `hav-a-seat-web`
-- `hav-a-seat-db`
+```bash
+terraform plan
+````
+
+and applied using:
+
+```bash
+terraform apply
+```
 
 ---
 
-## 🌐 Accessing the Application
+## 🔐 Security
 
-The recommended way to access the application is through Nginx:
+Security was considered at both the application and infrastructure levels.
 
-`http://localhost`
+### AWS Security
 
-The Flask application is also exposed on:
+The infrastructure uses security groups to control traffic between:
 
-`http://localhost:5000`
+* Internet-facing components
+* Load balancer
+* EC2 instances
+* Database resources
 
-The Flask port is available for development and troubleshooting purposes, while Nginx provides the main entry point to the application.
+The database is not exposed directly to the public internet.
+
+### 🔑 GitHub Actions OIDC
+
+GitHub Actions authenticates with AWS using OpenID Connect (OIDC).
+
+This avoids storing long-lived AWS access keys inside GitHub Actions secrets.
+
+The GitHub Actions IAM role uses a trust policy that restricts access to the project's GitHub repository and the `main` branch.
+
+The workflow uses:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+```
+
+AWS credentials are configured using:
+
+```yaml
+aws-actions/configure-aws-credentials
+```
+
+The workflow then verifies the AWS identity before continuing with deployment.
 
 ---
 
-## 🧰 Useful Docker Commands
+## 🔄 CI/CD Pipeline
 
-### ▶️ Start the application
+The project includes an automated GitHub Actions CI/CD pipeline.
 
-`docker compose up -d`
+The workflow is located at:
 
-### 🔨 Rebuild the application
+`.github/workflows/deploy.yml`
 
-`docker compose up -d --build`
+The pipeline is triggered when changes are pushed to the `main` branch or when manually started using GitHub Actions.
 
-### 🛑 Stop the application
+### 1️⃣ Test Application
 
-`docker compose down`
+The first stage:
 
-### 📊 Check container status
+* Checks out the repository
+* Sets up Python
+* Installs project dependencies
+* Runs Python syntax checks using `compileall`
 
-`docker compose ps`
+### 2️⃣ Build and Push Docker Image
 
-### 📝 View Flask logs
+After the tests pass, the Docker stage:
 
-`docker logs hav-a-seat-web`
+* Logs into Docker Hub
+* Sets up Docker Buildx
+* Builds the application image
+* Pushes the image to Docker Hub
+* Creates both `latest` and Git SHA image tags
 
-### 🌐 View Nginx logs
+### 3️⃣ Deploy to EC2
 
-`docker logs hav-a-seat-nginx`
+The deployment stage:
 
-### 🗄️ View PostgreSQL logs
+* Authenticates with AWS using GitHub OIDC
+* Verifies the AWS identity
+* Finds running Hav-A-Seat EC2 instances
+* Uses AWS Systems Manager to execute deployment commands
+* Pulls the latest Docker image
+* Preserves the existing container environment
+* Stops and removes the old container
+* Starts the new container
+* Verifies that the new container is running
 
-`docker logs hav-a-seat-db`
+### 4️⃣ Deployment Verification
+
+The workflow performs a final verification using SSM to confirm:
+
+* The `hav-a-seat` container is running
+* The expected Docker image is being used
+* The deployment completed successfully
+
+---
+
+## 🧪 Deployment Testing
+
+The deployed application has been tested through the public Application Load Balancer.
+
+The following endpoints have been verified:
+
+### 🏠 Home Page
+
+Returns:
+
+`HTTP 200 OK`
+
+### 🎭 Events Page
+
+Returns:
+
+`HTTP 200 OK`
+
+### ⚖️ Load Balancer Health
+
+Both EC2 instances registered with the target group have been verified as:
+
+`healthy`
+
+### 🐳 Container Verification
+
+Both EC2 instances have been verified to run:
+
+`masemulan/hav-a-seat:latest`
+
+with the application container mapped as:
+
+`80 -> 5000`
+
+---
+
+## 📊 Current Deployment Architecture
+
+The current deployment follows this general flow:
+
+```text
+                    Internet
+                       │
+                       ▼
+              ┌─────────────────┐
+              │ Application      │
+              │ Load Balancer    │
+              └────────┬────────┘
+                       │
+             ┌─────────┴─────────┐
+             │                   │
+             ▼                   ▼
+      ┌─────────────┐     ┌─────────────┐
+      │ EC2 / AZ-1  │     │ EC2 / AZ-2  │
+      │             │     │             │
+      │ Docker      │     │ Docker      │
+      │ Hav-A-Seat  │     │ Hav-A-Seat  │
+      └──────┬──────┘     └──────┬──────┘
+             │                   │
+             └─────────┬─────────┘
+                       │
+                       ▼
+                ┌─────────────┐
+                │ PostgreSQL  │
+                │    RDS      │
+                └─────────────┘
+```
+
+Deployment automation follows:
+
+```text
+GitHub
+   │
+   ▼
+GitHub Actions
+   │
+   ├── Test
+   │
+   ├── Build Docker Image
+   │
+   ├── Push to Docker Hub
+   │
+   ├── Authenticate with AWS using OIDC
+   │
+   └── Deploy using AWS SSM
+             │
+             ▼
+        EC2 Instances
+```
 
 ---
 
 ## 📁 Project Structure
 
-The main project structure is:
+The main project structure includes:
 
-- `app/` — Flask application code
-- `app/static/` — Static files
-- `app/templates/` — HTML/Jinja2 templates
-- `app/database.py` — Database connection and database-related functionality
-- `app/routes.py` — Application routes
-- `nginx/` — Nginx configuration
-- `nginx/nginx.conf` — Nginx reverse-proxy configuration
-- `screenshots/` — Project screenshots
-- `app.py` — Application entry point
-- `Dockerfile` — Flask application Docker image configuration
-- `docker-compose.yml` — Docker services configuration
-- `requirements.txt` — Python dependencies
-- `.gitignore` — Files excluded from version control
-- `README.md` — Project documentation
+```text
+Hav-A-Seat/
+│
+├── app/
+│   ├── admin.py
+│   ├── database.py
+│   ├── routes.py
+│   ├── templates/
+│   │   ├── base.html
+│   │   ├── events.html
+│   │   ├── reservation_form.html
+│   │   ├── confirmation.html
+│   │   ├── base_admin.html
+│   │   ├── dashboard.html
+│   │   ├── event_form.html
+│   │   ├── delete_confirm.html
+│   │   └── login.html
+│   └── ...
+│
+├── database/
+│   └── init/
+│
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+│
+├── .github/
+│   └── workflows/
+│       └── deploy.yml
+│
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── app.py
+├── .env
+└── README.md
+```
 
----
-
-## 🔮 Future Development
-
-The project will continue to be developed during the following project phases.
-
-Planned areas include:
-
-- AWS infrastructure using Terraform
-- VPC networking
-- Public and private subnets
-- Internet Gateway
-- NAT Gateway
-- Amazon RDS PostgreSQL
-- Application Load Balancer
-- EC2 deployment
-- Auto Scaling
-- Docker deployment on AWS
-- GitHub Actions CI/CD
-- CloudWatch monitoring
-- AWS security configuration
-- Cost optimization
-
----
-
-## 👤 Author
-
-**Noluthando Masemula**
-
-Cloud Engineering / Software Development
-
-GitHub: https://github.com/MasemulaN
+Sensitive configuration such as database credentials and deployment secrets should not be committed to the repository.
 
 ---
 
-# 🏗️ Architecture Diagram
+## 🛠️ Technologies Used
 
-<img width="1162" height="1101" alt="week 2 drawing drawio" src="https://github.com/user-attachments/assets/02a3cb2f-d3d1-4fd3-ae49-3e69501b3dbf" />
+| Technology                | Purpose                          |
+| ------------------------- | -------------------------------- |
+| Python                    | Application programming language |
+| Flask                     | Web application framework        |
+| PostgreSQL                | Relational database              |
+| Psycopg                   | PostgreSQL database connection   |
+| Bootstrap                 | User interface styling           |
+| Bootstrap Icons           | Application icons                |
+| Gunicorn                  | Production WSGI server           |
+| Docker                    | Application containerisation     |
+| Docker Hub                | Container image registry         |
+| Terraform                 | Infrastructure as Code           |
+| Amazon EC2                | Application compute              |
+| Amazon RDS                | Managed PostgreSQL database      |
+| Application Load Balancer | Traffic distribution             |
+| Auto Scaling Group        | Application scalability          |
+| AWS SSM                   | Remote deployment                |
+| IAM                       | AWS access control               |
+| GitHub Actions            | CI/CD automation                 |
+| GitHub OIDC               | Secure AWS authentication        |
 
 ---
 
-## 🔄 Request Flow
+## 🚀 Running the Application Locally
 
-1. The user accesses `http://localhost`.
-2. Nginx receives the request on port `80`.
-3. Nginx acts as a reverse proxy and forwards the request to the Flask application using the Docker service name `web` and port `5000`.
-4. Flask processes the request and determines what data or operation is required.
-5. Flask communicates with PostgreSQL using the Docker service name `db` and port `5432`.
-6. PostgreSQL stores or retrieves the requested data.
-7. Flask generates the response.
-8. Nginx forwards the response back to the user's browser.
+Create and activate a Python virtual environment:
+
+```bash
+python -m venv venv
+```
+
+Activate it on Windows:
+
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+The application can be run locally using Flask or through the project's Docker Compose configuration.
+
+For the Docker-based environment:
+
+```bash
+docker compose up -d
+```
+
+The application can then be accessed locally through the configured application port.
 
 ---
 
-## 🔗 Container Communication
+## 🌍 Cloud Deployment
 
-The three containers communicate through the Docker Compose network.
+The deployed application is accessed through the AWS Application Load Balancer.
 
-**Browser**
+The current public application endpoint is:
 
-↓
+http://nm-hav-a-seat-alb-1086347342.af-south-1.elb.amazonaws.com/
 
-**Nginx — Port 80**
+The Events page is available at:
 
-↓
+http://nm-hav-a-seat-alb-1086347342.af-south-1.elb.amazonaws.com/events
 
-**Flask — `web:5000`**
+---
 
-↓
+## 📚 Project Progress
 
-**PostgreSQL — `db:5432`**
+### ✅ Week 1 — Application Development
 
-Nginx provides the main entry point, Flask handles the application logic, and PostgreSQL provides persistent data storage.
+Completed:
+
+* Flask application created
+* GitHub repository created
+* Application routes and templates implemented
+* Event and reservation functionality created
+* PostgreSQL database designed
+* Local database integration completed
+* Docker configuration created
+* Application containerised
+
+### ✅ Week 2 — Cloud Infrastructure
+
+Completed:
+
+* AWS networking infrastructure
+* Public and private subnets
+* EC2 application instances
+* Auto Scaling configuration
+* Application Load Balancer
+* RDS PostgreSQL
+* Security groups
+* IAM configuration
+* Terraform infrastructure management
+* Application deployment to AWS
+* Application and database connectivity testing
+
+### ✅ Week 3 — CI/CD
+
+Completed:
+
+* GitHub Actions workflow
+* Automated application testing
+* Automated Docker image builds
+* Docker Hub image publishing
+* GitHub OIDC authentication with AWS
+* AWS IAM trust configuration
+* AWS identity verification
+* Automated EC2 discovery
+* SSM-based application deployment
+* Deployment verification
+* Successful end-to-end CI/CD deployment
+
+A final CI/CD deployment test was also performed by making a visible change to the Events page, committing it to GitHub, triggering the pipeline, and verifying that the updated version appeared on the live AWS application.
+
+---
+
+## 🎯 Project Outcome
+
+Hav-A-Seat has progressed from a locally developed Flask application into a cloud-hosted, containerised application with automated infrastructure and deployment.
+
+The completed solution demonstrates:
+
+* Full-stack web application development
+* Relational database integration
+* Containerisation
+* Infrastructure as Code
+* AWS cloud architecture
+* High availability across Availability Zones
+* Load balancing
+* Auto Scaling
+* Secure IAM configuration
+* OIDC-based CI/CD authentication
+* Automated Docker image publishing
+* Automated AWS deployment
+* Production-style application deployment using Gunicorn and SSM
+
+The project provides a foundation for further improvements such as enhanced monitoring, automated application tests, HTTPS configuration, improved observability, and additional deployment safeguards.
+
+
