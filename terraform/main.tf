@@ -358,7 +358,7 @@ resource "aws_iam_role" "github_actions" {
           }
 
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:MasemulaN@147561974/Hav-A-Seat@1325273372:ref:refs/heads/main"
+            "token.actions.githubusercontent.com:sub" = "repo:MasemulaN/Hav-A-Seat:ref:refs/heads/main"
           }
         }
       }
@@ -432,38 +432,94 @@ resource "aws_launch_template" "hav_a_seat" {
   ]
 
   user_data = base64encode(<<-EOF
-    #!/bin/bash
+  #!/bin/bash
 
-    # Update the system
-    dnf update -y
+  # Update the system
+  dnf update -y
 
-    # Install Docker and Git
-    dnf install -y docker git
+  # Install Docker and Git
+  dnf install -y docker git
 
-    # Start Docker
-    systemctl enable docker
-    systemctl start docker
+  # Start Docker
+  systemctl enable docker
+  systemctl start docker
 
-    # Clone the application
-    cd /opt
-    git clone https://github.com/MasemulaN/Hav-A-Seat.git
+  # Clone the application
+  cd /opt
+  git clone https://github.com/MasemulaN/Hav-A-Seat.git
 
-    # Build the Docker image
-    cd /opt/Hav-A-Seat
-    docker build -t hav-a-seat .
+  # Build the Docker image
+  cd /opt/Hav-A-Seat
+  docker build -t hav-a-seat .
 
-    # Run the application
-    docker run -d \
-      --name hav-a-seat \
-      --restart unless-stopped \
-      -p 80:5000 \
-      -e DB_HOST="${aws_db_instance.hav_a_seat.address}" \
-      -e DB_PORT="${aws_db_instance.hav_a_seat.port}" \
-      -e DB_NAME="${aws_db_instance.hav_a_seat.db_name}" \
-      -e DB_USER="${aws_db_instance.hav_a_seat.username}" \
-      -e DB_PASSWORD="${var.db_password}" \
-      hav-a-seat
-  EOF
+  # Database connection settings
+  DB_HOST="${aws_db_instance.hav_a_seat.address}"
+  DB_PORT="${aws_db_instance.hav_a_seat.port}"
+  DB_NAME="${aws_db_instance.hav_a_seat.db_name}"
+  DB_USER="${aws_db_instance.hav_a_seat.username}"
+  DB_PASSWORD="${var.db_password}"
+
+  # Wait for RDS to become available
+  echo "Waiting for RDS database to become available..."
+
+  until docker run --rm \
+    -e PGPASSWORD="$DB_PASSWORD" \
+    postgres:17 \
+    pg_isready \
+    -h "$DB_HOST" \
+    -p "$DB_PORT" \
+    -U "$DB_USER" \
+    -d "$DB_NAME"
+  do
+    echo "RDS is not ready yet. Waiting 5 seconds..."
+    sleep 5
+  done
+
+  echo "RDS is available."
+
+  # Check whether the database schema already exists
+  TABLE_EXISTS=$(docker run --rm \
+    -e PGPASSWORD="$DB_PASSWORD" \
+    postgres:17 \
+    psql \
+    -h "$DB_HOST" \
+    -p "$DB_PORT" \
+    -U "$DB_USER" \
+    -d "$DB_NAME" \
+    -tAc "SELECT to_regclass('public.events');")
+
+  # Initialize the database only when the schema does not exist
+  if [ "$TABLE_EXISTS" = "events" ]; then
+    echo "Database schema already exists. Skipping initialization."
+  else
+    echo "Database schema not found. Initializing database..."
+
+    docker run --rm \
+      -e PGPASSWORD="$DB_PASSWORD" \
+      -v /opt/Hav-A-Seat/database/init:/init:ro \
+      postgres:17 \
+      psql \
+      -h "$DB_HOST" \
+      -p "$DB_PORT" \
+      -U "$DB_USER" \
+      -d "$DB_NAME" \
+      -f /init/01-init.sql
+
+    echo "Database initialization completed."
+  fi
+
+  # Run the application
+  docker run -d \
+    --name hav-a-seat \
+    --restart unless-stopped \
+    -p 80:5000 \
+    -e DB_HOST="$DB_HOST" \
+    -e DB_PORT="$DB_PORT" \
+    -e DB_NAME="$DB_NAME" \
+    -e DB_USER="$DB_USER" \
+    -e DB_PASSWORD="$DB_PASSWORD" \
+    hav-a-seat
+EOF
   )
 
   tag_specifications {
