@@ -583,6 +583,72 @@ resource "aws_autoscaling_group" "hav_a_seat" {
 }
 
 # ---------------------------------------------------------
+# Auto Scaling Policies
+# ---------------------------------------------------------
+
+resource "aws_autoscaling_policy" "scale_out" {
+  name                   = "${var.project_name}-scale-out"
+  autoscaling_group_name = aws_autoscaling_group.hav_a_seat.name
+  policy_type            = "SimpleScaling"
+  adjustment_type        = "ChangeInCapacity"
+  scaling_adjustment     = 1
+  cooldown               = 300
+}
+
+resource "aws_autoscaling_policy" "scale_in" {
+  name                   = "${var.project_name}-scale-in"
+  autoscaling_group_name = aws_autoscaling_group.hav_a_seat.name
+  policy_type            = "SimpleScaling"
+  adjustment_type        = "ChangeInCapacity"
+  scaling_adjustment     = -1
+  cooldown               = 300
+}
+
+# ---------------------------------------------------------
+# Auto Scaling CloudWatch Alarms
+# ---------------------------------------------------------
+
+resource "aws_cloudwatch_metric_alarm" "scale_out" {
+  alarm_name          = "${var.project_name}-scale-out"
+  alarm_description   = "Scale out when average CPU utilization reaches 70%"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 70
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.hav_a_seat.name
+  }
+
+  alarm_actions = [
+    aws_autoscaling_policy.scale_out.arn
+  ]
+}
+
+resource "aws_cloudwatch_metric_alarm" "scale_in" {
+  alarm_name          = "${var.project_name}-scale-in"
+  alarm_description   = "Scale in when average CPU utilization falls to 30%"
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 30
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.hav_a_seat.name
+  }
+
+  alarm_actions = [
+    aws_autoscaling_policy.scale_in.arn
+  ]
+}
+
+# ---------------------------------------------------------
 # Application Load Balancer
 # ---------------------------------------------------------
 
