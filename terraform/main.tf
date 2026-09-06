@@ -37,6 +37,10 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
+
+
 # ---------------------------------------------------------
 # VPC
 # ---------------------------------------------------------
@@ -273,6 +277,17 @@ resource "aws_security_group" "db" {
 }
 
 # ---------------------------------------------------------
+# AWS Systems Manager Parameter Store
+# ---------------------------------------------------------
+
+resource "aws_ssm_parameter" "db_password" {
+  name        = "/${var.project_name}/db/password"
+  description = "Hav-A-Seat PostgreSQL database password"
+  type        = "SecureString"
+  value       = var.db_password
+}
+
+# ---------------------------------------------------------
 # CloudWatch Logs
 # ---------------------------------------------------------
 
@@ -337,6 +352,27 @@ resource "aws_iam_role_policy" "ec2_cloudwatch_logs" {
         ]
 
         Resource = "${aws_cloudwatch_log_group.hav_a_seat.arn}:*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ec2_parameter_store" {
+  name = "${var.project_name}-ec2-parameter-store"
+  role = aws_iam_role.ec2_ssm.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ssm:GetParameter"
+        ]
+
+        Resource = aws_ssm_parameter.db_password.arn
       }
     ]
   })
@@ -425,13 +461,40 @@ resource "aws_iam_role_policy" "github_actions_deployment" {
         Effect = "Allow"
 
         Action = [
-          "ssm:SendCommand",
           "ssm:GetCommandInvocation",
           "ssm:ListCommandInvocations",
           "ssm:ListCommands"
         ]
 
         Resource = "*"
+      },
+
+      {
+        Sid    = "RunShellScriptDocument"
+        Effect = "Allow"
+
+        Action = [
+          "ssm:SendCommand"
+        ]
+
+        Resource = "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript"
+      },
+
+      {
+        Sid    = "HavASeatInstancesOnly"
+        Effect = "Allow"
+
+        Action = [
+          "ssm:SendCommand"
+        ]
+
+        Resource = "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"
+
+        Condition = {
+          StringEquals = {
+            "ssm:resourceTag/Project" = "Hav-A-Seat"
+          }
+        }
       },
 
       {
@@ -474,8 +537,8 @@ resource "aws_launch_template" "hav_a_seat" {
   # Update the system
   dnf update -y
 
-  # Install Docker and Git
-  dnf install -y docker git
+  # Install Docker and Git, and AWS CLI
+  dnf install -y docker git awscli
 
   # Start Docker
   systemctl enable docker
@@ -494,7 +557,12 @@ resource "aws_launch_template" "hav_a_seat" {
   DB_PORT="${aws_db_instance.hav_a_seat.port}"
   DB_NAME="${aws_db_instance.hav_a_seat.db_name}"
   DB_USER="${aws_db_instance.hav_a_seat.username}"
-  DB_PASSWORD="${var.db_password}"
+  DB_PASSWORD=$(aws ssm get-parameter \
+  --name "/${var.project_name}/db/password" \
+  --with-decryption \
+  --region af-south-1 \
+  --query "Parameter.Value" \
+  --output text)
 
   # Wait for RDS to become available
   echo "Waiting for RDS database to become available..."
