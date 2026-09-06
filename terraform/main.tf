@@ -273,6 +273,20 @@ resource "aws_security_group" "db" {
 }
 
 # ---------------------------------------------------------
+# CloudWatch Logs
+# ---------------------------------------------------------
+
+resource "aws_cloudwatch_log_group" "hav_a_seat" {
+  name              = "/aws/ec2/${var.project_name}/application"
+  retention_in_days = 7
+
+  tags = {
+    Name    = "${var.project_name}-application-logs"
+    Project = "Hav-A-Seat"
+  }
+}
+
+# ---------------------------------------------------------
 # IAM Role for EC2 / Systems Manager
 # ---------------------------------------------------------
 
@@ -306,6 +320,28 @@ resource "aws_iam_role_policy_attachment" "ec2_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+resource "aws_iam_role_policy" "ec2_cloudwatch_logs" {
+  name = "${var.project_name}-ec2-cloudwatch-logs"
+  role = aws_iam_role.ec2_ssm.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+
+        Resource = "${aws_cloudwatch_log_group.hav_a_seat.arn}:*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_instance_profile" "ec2_ssm" {
   name = "${var.project_name}-ec2-ssm-profile"
   role = aws_iam_role.ec2_ssm.name
@@ -331,6 +367,7 @@ resource "aws_iam_openid_connect_provider" "github" {
     Project = "Hav-A-Seat"
   }
 }
+
 
 # ---------------------------------------------------------
 # IAM Role for GitHub Actions
@@ -508,10 +545,14 @@ resource "aws_launch_template" "hav_a_seat" {
     echo "Database initialization completed."
   fi
 
-  # Run the application
+    # Run the application with CloudWatch logging
   docker run -d \
     --name hav-a-seat \
     --restart unless-stopped \
+    --log-driver=awslogs \
+    --log-opt awslogs-region=af-south-1 \
+    --log-opt awslogs-group="${aws_cloudwatch_log_group.hav_a_seat.name}" \
+    --log-opt awslogs-stream="app-$(hostname)" \
     -p 80:5000 \
     -e DB_HOST="$DB_HOST" \
     -e DB_PORT="$DB_PORT" \
@@ -580,7 +621,12 @@ resource "aws_autoscaling_group" "hav_a_seat" {
     value               = "Private"
     propagate_at_launch = true
   }
+
+  depends_on = [
+    aws_iam_role_policy.ec2_cloudwatch_logs
+  ]
 }
+
 
 # ---------------------------------------------------------
 # Auto Scaling Policies
@@ -646,6 +692,132 @@ resource "aws_cloudwatch_metric_alarm" "scale_in" {
   alarm_actions = [
     aws_autoscaling_policy.scale_in.arn
   ]
+}
+
+# ---------------------------------------------------------
+# CloudWatch Monitoring Dashboard
+# ---------------------------------------------------------
+
+resource "aws_cloudwatch_dashboard" "hav_a_seat" {
+  dashboard_name = "${var.project_name}-monitoring"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "text"
+        x      = 0
+        y      = 0
+        width  = 24
+        height = 2
+
+        properties = {
+          markdown = "# Hav-A-Seat Monitoring Dashboard\n\nCloudWatch monitoring for EC2, Application Load Balancer, and application health."
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 2
+        width  = 12
+        height = 6
+
+        properties = {
+          title  = "EC2 CPU Utilization"
+          view   = "timeSeries"
+          region = "af-south-1"
+          period = 300
+          stat   = "Average"
+          yAxis = {
+            left = {
+              min = 0
+              max = 100
+            }
+          }
+          metrics = [
+            [
+              "AWS/EC2",
+              "CPUUtilization",
+              "AutoScalingGroupName",
+              aws_autoscaling_group.hav_a_seat.name
+            ]
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 2
+        width  = 12
+        height = 6
+
+        properties = {
+          title  = "ALB Request Count"
+          view   = "timeSeries"
+          region = "af-south-1"
+          period = 300
+          stat   = "Sum"
+          metrics = [
+            [
+              "AWS/ApplicationELB",
+              "RequestCount",
+              "LoadBalancer",
+              aws_lb.hav_a_seat.arn_suffix
+            ]
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 8
+        width  = 12
+        height = 6
+
+        properties = {
+          title  = "ALB Target Response Time"
+          view   = "timeSeries"
+          region = "af-south-1"
+          period = 300
+          stat   = "Average"
+          metrics = [
+            [
+              "AWS/ApplicationELB",
+              "TargetResponseTime",
+              "LoadBalancer",
+              aws_lb.hav_a_seat.arn_suffix,
+              "TargetGroup",
+              aws_lb_target_group.hav_a_seat.arn_suffix
+            ]
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 8
+        width  = 12
+        height = 6
+
+        properties = {
+          title  = "ALB Target 5XX Errors"
+          view   = "timeSeries"
+          region = "af-south-1"
+          period = 300
+          stat   = "Sum"
+          metrics = [
+            [
+              "AWS/ApplicationELB",
+              "HTTPCode_Target_5XX_Count",
+              "LoadBalancer",
+              aws_lb.hav_a_seat.arn_suffix,
+              "TargetGroup",
+              aws_lb_target_group.hav_a_seat.arn_suffix
+            ]
+          ]
+        }
+      }
+    ]
+  })
 }
 
 # ---------------------------------------------------------
