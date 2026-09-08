@@ -575,7 +575,7 @@ The current deployment follows this general flow:
 
 Deployment automation follows:
 
-
+```
 GitHub
    │
    ▼
@@ -593,14 +593,14 @@ GitHub Actions
              │
              ▼
         EC2 Instances
-
+```
 
 ---
 
 ## 📁 Project Structure
 
 The main project structure includes:
-
+```
 Hav-A-Seat/
 │
 ├── app/
@@ -637,7 +637,7 @@ Hav-A-Seat/
 ├── app.py
 ├── .env
 └── README.md
-
+```
 
 Sensitive configuration such as database credentials and deployment secrets should not be committed to the repository.
 
